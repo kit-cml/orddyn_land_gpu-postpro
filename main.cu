@@ -1,8 +1,6 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-// #include "modules/drug_sim.hpp"
-#include "modules/cipa_t.cuh"
 #include "modules/glob_funct.hpp"
 #include "modules/glob_type.hpp"
 #include "modules/gpu.cuh"
