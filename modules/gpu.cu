@@ -4,11 +4,11 @@
 #include <stdio.h>
 
 #include "../cellmodels/Land_2016.hpp"
-#include "../cellmodels/Ohara_Rudy_2011.hpp"
+#include "../cellmodels/Ohara_Rudy_cipa_v1_2017.hpp"
 #include "glob_funct.hpp"
 #include "glob_type.hpp"
 #include "gpu.cuh"
-#include "gpu_glob_type.cuh"
+
 
 /*
 all kernel function has been moved. Unlike the previous GPU code, now we seperate everything into each modules.

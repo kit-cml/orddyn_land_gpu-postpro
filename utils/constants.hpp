@@ -19,7 +19,7 @@ const unsigned int sample_limit = 10000;
 const unsigned int ENOUGH = ((CHAR_BIT * sizeof(int) - 1) / 3 + 3);
 
 /**
- * @brief Number of constants, states, algebraic, and rates in the OHara Rudy 2011 model.
+ * @brief Number of constants, states, algebraic, and rates in the OHara Rudy 2017 model.
  */
 const int ORd_num_of_constants = 206;
 const int ORd_num_of_states = 50;
@@ -27,7 +27,7 @@ const int ORd_num_of_algebraic = 200;
 const int ORd_num_of_rates = 50;
 
 /**
- * @brief Number of constants, states, algebraic, and rates in the OHara Rudy 2011 model.
+ * @brief Number of constants, states, algebraic, and rates in the Land model.
  */
 const int Land_num_of_constants = 29;
 const int Land_num_of_states = 7;
