@@ -3,29 +3,36 @@
 
 #include <vector>
 
-// global variable for MPI.
-struct mympi
-{
-  static char host_name[255];
-  static int host_name_len;
-  static int rank;
-  static int size;
+/**
+ * @brief A structure to hold MPI-related global variables.
+ */
+struct mympi {
+    static char host_name[255]; ///< Host name of the MPI node.
+    static int host_name_len;   ///< Length of the host name.
+    static int rank;            ///< Rank of the MPI process.
+    static int size;            ///< Size of the MPI communicator.
 };
 
-// data structure for IC50
-typedef struct row_data { double data[14]; } row_data;
-typedef std::vector< row_data > drug_t;
+/**
+ * @brief A structure to hold row data for IC50 values.
+ */
+struct row_data {
+    double data[14]; ///< Array to store 14 features of IC50 data.
+};
 
-// data structure to store
-// ICaL/INaL control value
-// for calculating qinward
-// control means 0 concentration
-// otherwise, drugs
-typedef struct{
-  double ical_auc_control;
-  double inal_auc_control;
-  double ical_auc_drug;
-  double inal_auc_drug;
-} qinward_t;
+/**
+ * @brief A type alias for a vector of row_data, representing the drug data.
+ */
+using drug_t = std::vector<row_data>;
 
-#endif
+/**
+ * @brief A structure to store ICaL/INaL control and drug values for calculating qinward.
+ */
+struct qinward_t {
+    double ical_auc_control; ///< ICaL AUC control value (0 concentration).
+    double inal_auc_control; ///< INaL AUC control value (0 concentration).
+    double ical_auc_drug;    ///< ICaL AUC value with drug.
+    double inal_auc_drug;    ///< INaL AUC value with drug.
+};
+
+#endif // GLOB_TYPE_HPP
