@@ -120,6 +120,36 @@ int get_IC50_data_from_file(const char *file_name, double *ic50) {
     return sample_size;
 }
 
+int get_IC50_data_from_file(const char *file_name, double *ic50, double *conc) {
+    FILE *fp_drugs;
+    char *token;
+    char buffer_ic50[255];
+    unsigned int idx_ic50 = 0, idx_conc = 0;
+    int sample_size = 0;
+
+    if ((fp_drugs = fopen(file_name, "r")) == NULL) {
+        printf("Cannot open file %s\n", file_name);
+        return 0;
+    }
+
+    // Skip header
+    fgets(buffer_ic50, sizeof(buffer_ic50), fp_drugs);
+    while (fgets(buffer_ic50, sizeof(buffer_ic50), fp_drugs) != NULL) {
+        token = strtok(buffer_ic50, ",");
+        conc[idx_conc++] = strtod(strtok(NULL, ","), NULL);
+        token = strtok(NULL, ",");
+        while (token != NULL) {
+            ic50[idx_ic50++] = strtod(token, NULL);
+            // printf("%s\n", token); // testingAuto
+            token = strtok(NULL, ",");
+        }
+        sample_size++;
+    }
+
+    fclose(fp_drugs);
+    return sample_size;
+}
+
 int get_IC50_data_from_file(const char *file_name, double *ic50, double *conc, char **drug_name) {
     /*
     a host function to take all samples from the file, assuming each sample has 14 features.
@@ -407,8 +437,8 @@ int main(int argc, char **argv) {
         //   // "./drugs/bepridil/IC50_optimal.csv"
         //   // "./IC50_samples.csv"
         //   );
-
         int sample_size = get_IC50_data_from_file(p_param->hill_file, ic50, conc); 
+        // int sample_size = get_IC50_data_from_file(p_param->hill_file, ic50, conc); 
         if (sample_size == 0)
             printf("Something problem with the IC50 file!\n");
         // else if(sample_size > 2000)
