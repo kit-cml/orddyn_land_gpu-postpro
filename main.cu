@@ -26,34 +26,6 @@ char buffer[255];
 
 clock_t START_TIMER;
 
-int gpu_check(unsigned int datasize) {
-    int num_gpus;
-    float percent;
-    int id;
-    size_t free, total;
-    cudaGetDeviceCount(&num_gpus);
-    for (int gpu_id = 0; gpu_id < num_gpus; gpu_id++) {
-        cudaSetDevice(gpu_id);
-        cudaGetDevice(&id);
-        cudaMemGetInfo(&free, &total);
-        percent = (free / (float)total);
-        printf("GPU No %d\nFree Memory: %ld, Total Memory: %ld (%f percent free)\n", id, free, total, percent * 100.0);
-    }
-    percent = 1.0 - (datasize / (float)total);
-    //// this code strangely gave out too small value, so i disable the safety switch for now
-
-    // printf("The program uses GPU No %d and %f percent of its memory\n", id,percent*100.0);
-    // printf("\n");
-    // if (datasize<=free) {
-    //   return 0;
-    // }
-    // else {
-    //   return 1;
-    // }
-
-    return 0;
-}
-
 // get the IC50 data from file
 drug_t get_IC50_data_from_file(const char *file_name);
 // return error and message based on the IC50 data
