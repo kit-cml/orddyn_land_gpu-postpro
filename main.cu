@@ -26,8 +26,6 @@ char buffer[255];
 
 clock_t START_TIMER;
 
-clock_t tic();
-
 int gpu_check(unsigned int datasize) {
     int num_gpus;
     float percent;
@@ -315,6 +313,21 @@ int get_herg_data_from_file(const char* dir_name, char* drugname, double *herg)
   printf("%lf, %lf, %lf, %lf, %lf, %lf\n",herg[0],herg[1],herg[2],herg[3],herg[4],herg[5]);
   return sample_size;
 }
+
+char *get_drug_name(const char filename[1024]) {
+    std::string path(filename);
+    std::smatch match;
+    if (std::regex_search(path, match, std::regex(R"((IC50_)?([a-zA-Z0-9_]+)\.csv$)"))) {
+        std::string extracted_name = match[2].str();
+        char *result = new char[extracted_name.size() + 1];
+        std::strcpy(result, extracted_name.c_str());
+        return result;
+    } else {
+        return nullptr;
+    }
+}
+
+
 //// next work on the freaking herg
 int main(int argc, char **argv) {
     // enable real-time output in stdout
@@ -395,7 +408,7 @@ int main(int argc, char **argv) {
         //   // "./IC50_samples.csv"
         //   );
 
-        int sample_size = get_IC50_data_from_file(p_param->hill_file, ic50, conc, drug_name);
+        int sample_size = get_IC50_data_from_file(p_param->hill_file, ic50, conc); 
         if (sample_size == 0)
             printf("Something problem with the IC50 file!\n");
         // else if(sample_size > 2000)
@@ -474,18 +487,13 @@ int main(int argc, char **argv) {
         cudaMemcpy(d_p_param, p_param, sizeof(param_t), cudaMemcpyHostToDevice);
         cudaMemcpy(d_herg, herg, 6 * sizeof(double), cudaMemcpyHostToDevice);
 
-        // // Get the maximum number of active blocks per multiprocessor
-        // cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, do_drug_sim_analytical, threadsPerBlock);
-
-        // // Calculate the total number of blocks
-        // int numTotalBlocks = numBlocks * cudaDeviceGetMultiprocessorCount();
-
         tic();
         printf("Timer started, doing simulation.... \n\n\nGPU Usage at this moment: \n");
         if (gpu_check(15 * sample_size * sizeof(double) + sizeof(param_t)) == 1) {
             printf("GPU memory insufficient!\n");
             return 0;
         }
+        int blocksPerGrid = (sample_size + threadsPerBlock - 1) / threadsPerBlock;
         printf("Sample size: %d\n", sample_size);
         cudaSetDevice(p_param->gpu_index);
         printf("\n   Configuration: \n\n\tblock\t||\tthread\n---------------------------------------\n  \t%d\t||\t%d\n\n\n", blocksPerGrid, threadsPerBlock);
