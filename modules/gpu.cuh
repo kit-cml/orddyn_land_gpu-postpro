@@ -1,8 +1,8 @@
 #ifndef GPU_CUH
 #define GPU_CUH
-#include <cuda_runtime.h>
 #include <cuda.h>
-#include "cipa_t.cu"
+#include <cuda_runtime.h>
+#include "param.hpp"
 
 __global__ void kernel_DrugSimulation(double *d_ic50, double *d_cvar, double *d_conc, double *d_CONSTANTS, double *d_STATES, double *d_STATES_cache, double *d_RATES, double *d_ALGEBRAIC, 
                                       double *d_mec_CONSTANTS, double *d_mec_STATES, double *d_mec_RATES, double *d_mec_ALGEBRAIC,

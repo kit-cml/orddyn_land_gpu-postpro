@@ -292,6 +292,44 @@ int check_IC50_content(const drug_t *ic50, const param_t *p_param) {
     }
 }
 
+int get_herg_data_from_file(const char* dir_name, char* drugname, double *herg)
+{
+  FILE *fp_herg;
+  char *token;
+  char full_herg_file_name[150];
+  char buffer_herg[255];
+  unsigned int idx;
+
+  strcpy(full_herg_file_name, dir_name);
+  strcat(full_herg_file_name,"/");
+  strcat(drugname,".csv");
+  strcat(full_herg_file_name,drugname);
+
+  printf("reading herg file: %s\n",full_herg_file_name);
+
+  if( (fp_herg = fopen(full_herg_file_name, "r")) == NULL){
+    printf("Cannot open file %s\n", full_herg_file_name);
+    return 0;
+  }
+  idx = 0;
+  int sample_size = 0;
+  fgets(buffer_herg, sizeof(buffer_herg), fp_herg); // skip header
+  while( fgets(buffer_herg, sizeof(buffer_herg), fp_herg) != NULL )
+    { // begin line reading
+      token = strtok( buffer_herg, "," );
+      while( token != NULL )
+      { // begin data tokenizing
+        herg[idx++] = strtod(token, NULL);
+        token = strtok(NULL, ",");
+      } // end data tokenizing
+      sample_size++;
+    } // end line reading
+
+  fclose(fp_herg);
+  printf("%lf, %lf, %lf, %lf, %lf, %lf\n",herg[0],herg[1],herg[2],herg[3],herg[4],herg[5]);
+  return sample_size;
+}
+
 int main(int argc, char **argv) {
     // enable real-time output in stdout
     setvbuf(stdout, NULL, _IONBF, 0);

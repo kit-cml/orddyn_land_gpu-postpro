@@ -1,2 +1,2 @@
 bin/result/*/*.csv
-
+*.o
