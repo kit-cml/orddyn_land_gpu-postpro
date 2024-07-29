@@ -4,6 +4,8 @@
 #include "modules/glob_funct.hpp"
 #include "modules/glob_type.hpp"
 #include "modules/gpu.cuh"
+#include "utils/constants.hpp"
+#include "utils/timing.hpp"
 
 #include <algorithm>
 #include <cstdio>
@@ -20,27 +22,11 @@
 #include <vector>
 namespace fs = std::filesystem;
 
-#define ENOUGH ((CHAR_BIT * sizeof(int) - 1) / 3 + 3)
 char buffer[255];
-
-// unsigned int datapoint_size = 7000;
-const unsigned int sample_limit = 10000;
 
 clock_t START_TIMER;
 
 clock_t tic();
-void toc(clock_t start = START_TIMER);
-
-clock_t tic() {
-    return START_TIMER = clock();
-}
-
-void toc(clock_t start) {
-    std::cout
-        << "Elapsed time: "
-        << (clock() - start) / (double)CLOCKS_PER_SEC << "s"
-        << std::endl;
-}
 
 int gpu_check(unsigned int datasize) {
     int num_gpus;
@@ -329,7 +315,7 @@ int get_herg_data_from_file(const char* dir_name, char* drugname, double *herg)
   printf("%lf, %lf, %lf, %lf, %lf, %lf\n",herg[0],herg[1],herg[2],herg[3],herg[4],herg[5]);
   return sample_size;
 }
-
+//// next work on the freaking herg
 int main(int argc, char **argv) {
     // enable real-time output in stdout
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -355,17 +341,14 @@ int main(int argc, char **argv) {
     double *ic50; // temporary
     double *cvar;
     double *conc;
-    char **drug_name = nullptr;
+    char *drug_name = get_drug_name(p_param->hill_file);
+    double *herg;
 
     ic50 = (double *)malloc(14 * sample_limit * sizeof(double));
     // if (p_param->is_cvar == true) cvar = (double *)malloc(18 * sample_limit * sizeof(double));
     cvar = (double *)malloc(18 * sample_limit * sizeof(double));
     conc = (double *)malloc(sample_limit * sizeof(double));
-
-    int num_of_constants = 146;
-    int num_of_states = 42;
-    int num_of_algebraic = 199;
-    int num_of_rates = 42;
+    herg = (double *)malloc(6 * sizeof(double));
 
     //const double CONC = p_param->conc;
 
@@ -376,11 +359,12 @@ int main(int argc, char **argv) {
 
         const unsigned int datapoint_size = p_param->sampling_limit;
         double *cache;
-        cache = (double *)malloc((num_of_states + 2) * sample_limit * sizeof(double));
+        cache = (double *)malloc((ORd_num_of_states + 2) * sample_limit * sizeof(double));
 
         double *d_ic50;
         double *d_conc;
         double *d_cvar;
+        double *d_herg;
         double *d_ALGEBRAIC;
         double *d_CONSTANTS;
         double *d_RATES;
@@ -404,14 +388,6 @@ int main(int argc, char **argv) {
         double *ik1;
         double *tension;
         cipa_t *temp_result, *cipa_result;
-
-        static const int CALCIUM_SCALING = 1000000;
-        static const int CURRENT_SCALING = 1000;
-
-        int num_of_constants = 146;
-        int num_of_states = 42;
-        int num_of_algebraic = 199;
-        int num_of_rates = 42;
 
         // snprintf(buffer, sizeof(buffer),
         //   "./drugs/bepridil/IC50_samples.csv"
@@ -446,18 +422,20 @@ int main(int argc, char **argv) {
         // note to self:
         // num of states+2 gave you at the very end of the file (pace number)
         // the very beginning -> the core number
-        //   for (int z = 0; z <  num_of_states; z++) {printf("%lf\n", cache[z+1]);}
+        //   for (int z = 0; z <  ORd_num_of_states; z++) {printf("%lf\n", cache[z+1]);}
         //   printf("\n");
-        //   for (int z = 0; z <  num_of_states; z++) {printf("%lf\n", cache[ 1*(num_of_states+2) + (z+2)]);}
+        //   for (int z = 0; z <  ORd_num_of_states; z++) {printf("%lf\n", cache[ 1*(ORd_num_of_states+2) + (z+2)]);}
         //   printf("\n");
-        //   for (int z = 0; z <  num_of_states; z++) {printf("%lf\n", cache[ 2*(num_of_states+2) + (z+3)]);}
+        //   for (int z = 0; z <  ORd_num_of_states; z++) {printf("%lf\n", cache[ 2*(ORd_num_of_states+2) + (z+3)]);}
         // return 0 ;
 
-        cudaMalloc(&d_ALGEBRAIC, num_of_algebraic * sample_size * sizeof(double));
-        cudaMalloc(&d_CONSTANTS, num_of_constants * sample_size * sizeof(double));
-        cudaMalloc(&d_RATES, num_of_rates * sample_size * sizeof(double));
-        cudaMalloc(&d_STATES, num_of_states * sample_size * sizeof(double));
-        cudaMalloc(&d_STATES_cache, (num_of_states + 2) * sample_size * sizeof(double));
+        int herg_size = get_herg_data_from_file(p_param->herg_file, drug_name, herg);
+
+        cudaMalloc(&d_ALGEBRAIC, ORd_num_of_algebraic * sample_size * sizeof(double));
+        cudaMalloc(&d_CONSTANTS, ORd_num_of_constants * sample_size * sizeof(double));
+        cudaMalloc(&d_RATES, ORd_num_of_rates * sample_size * sizeof(double));
+        cudaMalloc(&d_STATES, ORd_num_of_states * sample_size * sizeof(double));
+        cudaMalloc(&d_STATES_cache, (ORd_num_of_states + 2) * sample_size * sizeof(double));
         cudaMalloc(&d_mec_ALGEBRAIC, 24 * sample_size * sizeof(double));
         cudaMalloc(&d_mec_CONSTANTS, 29 * sample_size * sizeof(double));
         cudaMalloc(&d_mec_RATES, 7 * sample_size * sizeof(double));
@@ -481,18 +459,20 @@ int main(int argc, char **argv) {
         cudaMalloc(&iks, sample_size * datapoint_size * sizeof(double));
         cudaMalloc(&ik1, sample_size * datapoint_size * sizeof(double));
         cudaMalloc(&tension, sample_size * datapoint_size * sizeof(double));
-        // cudaMalloc(&d_STATES_RESULT, (num_of_states+1) * sample_size * sizeof(double));
-        // cudaMalloc(&d_all_states, num_of_states * sample_size * p_param->find_steepest_start * sizeof(double));
+        // cudaMalloc(&d_STATES_RESULT, (ORd_num_of_states+1) * sample_size * sizeof(double));
+        // cudaMalloc(&d_all_states, ORd_num_of_states * sample_size * p_param->find_steepest_start * sizeof(double));
 
         printf("Copying sample files to GPU memory space \n");
         cudaMalloc(&d_ic50, sample_size * 14 * sizeof(double));
         cudaMalloc(&d_cvar, sample_size * 18 * sizeof(double));
         cudaMalloc(&d_conc, sample_size * sizeof(double));
-        cudaMemcpy(d_STATES_cache, cache, (num_of_states + 2) * sample_size * sizeof(double), cudaMemcpyHostToDevice);
+        cudaMalloc(&d_herg, 6 * sizeof(double));
+        cudaMemcpy(d_STATES_cache, cache, (ORd_num_of_states + 2) * sample_size * sizeof(double), cudaMemcpyHostToDevice);
         cudaMemcpy(d_ic50, ic50, sample_size * 14 * sizeof(double), cudaMemcpyHostToDevice);
         cudaMemcpy(d_cvar, cvar, sample_size * 18 * sizeof(double), cudaMemcpyHostToDevice);
         cudaMemcpy(d_conc, conc, sample_size * sizeof(double), cudaMemcpyHostToDevice);
         cudaMemcpy(d_p_param, p_param, sizeof(param_t), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_herg, herg, 6 * sizeof(double), cudaMemcpyHostToDevice);
 
         // // Get the maximum number of active blocks per multiprocessor
         // cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, do_drug_sim_analytical, threadsPerBlock);
@@ -502,30 +482,24 @@ int main(int argc, char **argv) {
 
         tic();
         printf("Timer started, doing simulation.... \n\n\nGPU Usage at this moment: \n");
-        int thread = 32;
-        int block = (sample_size + thread - 1) / thread;
-        // int block = (sample_size + thread - 1) / thread;
         if (gpu_check(15 * sample_size * sizeof(double) + sizeof(param_t)) == 1) {
             printf("GPU memory insufficient!\n");
             return 0;
         }
         printf("Sample size: %d\n", sample_size);
         cudaSetDevice(p_param->gpu_index);
-        printf("\n   Configuration: \n\n\tblock\t||\tthread\n---------------------------------------\n  \t%d\t||\t%d\n\n\n", block, thread);
+        printf("\n   Configuration: \n\n\tblock\t||\tthread\n---------------------------------------\n  \t%d\t||\t%d\n\n\n", blocksPerGrid, threadsPerBlock);
         // initscr();
         // printf("[____________________________________________________________________________________________________]  0.00 %% \n");
 
-        kernel_DrugSimulation<<<block, thread>>>(d_ic50, d_cvar, d_conc, d_CONSTANTS, d_STATES, d_STATES_cache, d_RATES, d_ALGEBRAIC,
-                                                 d_mec_CONSTANTS, d_mec_STATES, d_mec_RATES, d_mec_ALGEBRAIC,
-                                                 d_STATES_RESULT, d_all_states,
-                                                 time, states, dt, cai_result,
-                                                 ina, inal,
-                                                 ical, ito,
-                                                 ikr, iks,
-                                                 ik1, tension,
-                                                 sample_size,
-                                                 temp_result, cipa_result,
-                                                 d_p_param);
+        kernel_DrugSimulation<<<blocksPerGrid, threadsPerBlock>>>(d_ic50, d_cvar, d_conc, d_herg, d_CONSTANTS, 
+                                                 d_STATES, d_STATES_cache, d_RATES, d_ALGEBRAIC,
+                                                 d_mec_CONSTANTS, d_mec_STATES, d_mec_RATES, 
+                                                 d_mec_ALGEBRAIC, d_STATES_RESULT, d_all_states,
+                                                 time, states, dt, cai_result, ina, 
+                                                 inal, ical, ito, ikr, iks, ik1, tension, 
+                                                 sample_size, temp_result, cipa_result, d_p_param);
+
         // block per grid, threads per block
         // endwin();
 
@@ -718,13 +692,13 @@ int main(int argc, char **argv) {
                     // temp_result[sample_id].dvmdt_repol = -999;
                     // temp_result[sample_id].dvmdt_max = -999;
                     // temp_result[sample_id].vm_peak = -999;
-                    // temp_result[sample_id].vm_valley = d_STATES[(sample_id * num_of_states) +V];
+                    // temp_result[sample_id].vm_valley = d_STATES[(sample_id * ORd_num_of_states) +V];
                     // temp_result[sample_id].vm_dia = -999;
 
                     // temp_result[sample_id].apd90 = 0.;
                     // temp_result[sample_id].apd50 = 0.;
                     // temp_result[sample_id].ca_peak = -999;
-                    // temp_result[sample_id].ca_valley = d_STATES[(sample_id * num_of_states) +cai];
+                    // temp_result[sample_id].ca_valley = d_STATES[(sample_id * ORd_num_of_states) +cai];
                     // temp_result[sample_id].ca_dia = -999;
                     // temp_result[sample_id].cad90 = 0.;
                     // temp_result[sample_id].cad50 = 0.;
