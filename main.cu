@@ -6,6 +6,7 @@
 #include "modules/gpu.cuh"
 #include "utils/constants.hpp"
 #include "utils/timing.hpp"
+#include "utils/gpu_operations.hpp"
 
 #include <algorithm>
 #include <cstdio>
