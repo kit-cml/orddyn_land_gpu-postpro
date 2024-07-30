@@ -1,2 +1,3 @@
 bin/result/*/*.csv
 *.o
+bin/drug_sim
